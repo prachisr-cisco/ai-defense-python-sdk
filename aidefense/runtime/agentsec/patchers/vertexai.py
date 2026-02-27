@@ -747,7 +747,8 @@ async def _inspect_prediction_async(wrapped, instance, args, kwargs, entry="gene
         messages_with_response = normalized + [
             {"role": "assistant", "content": assistant_content}
         ]
-        decision = await inspector.ainspect_conversation(messages_with_response, metadata)
+        resp_inspector = _get_inspector()
+        decision = await resp_inspector.ainspect_conversation(messages_with_response, metadata)
         logger.debug(f"[PATCHED CALL] PredictionService.{entry} (async) - Response decision: {decision.action}")
         set_inspection_context(decision=decision, done=True)
         _enforce_decision(decision)
@@ -1804,7 +1805,8 @@ async def _inspect_vertexai_async(wrapped, instance, args, kwargs, entry="genera
         messages_with_response = normalized + [
             {"role": "assistant", "content": assistant_content}
         ]
-        decision = await inspector.ainspect_conversation(messages_with_response, metadata)
+        resp_inspector = _get_inspector()
+        decision = await resp_inspector.ainspect_conversation(messages_with_response, metadata)
         logger.debug(f"[PATCHED CALL] VertexAI.{entry} - Response decision: {decision.action}")
         set_inspection_context(decision=decision, done=True)
         _enforce_decision(decision)

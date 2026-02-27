@@ -777,8 +777,21 @@ def set_state(
     api_mcp_defs = _unpack_defaults(am.get("mcp_defaults"), prefix="api_mode.mcp_defaults")
     _validate_defaults("api_mode.llm_defaults", api_llm_defs)
     _validate_defaults("api_mode.mcp_defaults", api_mcp_defs)
-    api_llm_cfg = am.get("llm") or {}
-    api_mcp_cfg = am.get("mcp") or {}
+
+    _raw_llm = am.get("llm")
+    if _raw_llm is not None and not isinstance(_raw_llm, dict):
+        raise ConfigurationError(
+            f"api_mode.llm must be a dict with keys like 'mode', 'endpoint', 'api_key'; "
+            f"got {type(_raw_llm).__name__}: {_raw_llm!r}"
+        )
+    _raw_mcp = am.get("mcp")
+    if _raw_mcp is not None and not isinstance(_raw_mcp, dict):
+        raise ConfigurationError(
+            f"api_mode.mcp must be a dict with keys like 'mode', 'endpoint', 'api_key'; "
+            f"got {type(_raw_mcp).__name__}: {_raw_mcp!r}"
+        )
+    api_llm_cfg = _raw_llm or {}
+    api_mcp_cfg = _raw_mcp or {}
 
     # Validate API modes if provided
     api_mode_llm_val = api_llm_cfg.get("mode")

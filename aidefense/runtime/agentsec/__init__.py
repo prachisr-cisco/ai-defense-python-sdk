@@ -252,6 +252,62 @@ def _validate_protect_args(
         )
 
 
+def _validate_gateway_entries(
+    llm_integration_mode: str,
+    mcp_integration_mode: str,
+    gateway_mode: dict,
+) -> None:
+    """Validate gateway entries at init time.
+
+    Checks that every gateway declared in ``llm_gateways`` or
+    ``mcp_gateways`` has a non-empty ``gateway_url`` and, if
+    ``auth_mode`` is specified, that it is one of the recognized values.
+
+    Raises:
+        ConfigurationError: On missing ``gateway_url`` or invalid ``auth_mode``.
+    """
+    from ._state import VALID_AUTH_MODES
+
+    llm_gateways = gateway_mode.get("llm_gateways") or {}
+    mcp_gateways = gateway_mode.get("mcp_gateways") or {}
+
+    if llm_integration_mode == "gateway":
+        for gw_name, gw_cfg in llm_gateways.items():
+            if not isinstance(gw_cfg, dict):
+                continue
+            gw_url = gw_cfg.get("gateway_url", "")
+            if not gw_url or not isinstance(gw_url, str) or not gw_url.strip():
+                raise ConfigurationError(
+                    f"gateway_mode.llm_gateways.{gw_name}: "
+                    f"gateway_url is required and must be a non-empty string"
+                )
+            auth = gw_cfg.get("auth_mode")
+            if auth is not None and auth not in VALID_AUTH_MODES:
+                raise ConfigurationError(
+                    f"gateway_mode.llm_gateways.{gw_name}: "
+                    f"invalid auth_mode '{auth}'. "
+                    f"Must be one of: {', '.join(sorted(VALID_AUTH_MODES))}"
+                )
+
+    if mcp_integration_mode == "gateway":
+        for gw_name, gw_cfg in mcp_gateways.items():
+            if not isinstance(gw_cfg, dict):
+                continue
+            gw_url = gw_cfg.get("gateway_url", "")
+            if not gw_url or not isinstance(gw_url, str) or not gw_url.strip():
+                raise ConfigurationError(
+                    f"gateway_mode.mcp_gateways.{gw_name}: "
+                    f"gateway_url is required and must be a non-empty string"
+                )
+            auth = gw_cfg.get("auth_mode")
+            if auth is not None and auth not in VALID_AUTH_MODES:
+                raise ConfigurationError(
+                    f"gateway_mode.mcp_gateways.{gw_name}: "
+                    f"invalid auth_mode '{auth}'. "
+                    f"Must be one of: {', '.join(sorted(VALID_AUTH_MODES))}"
+                )
+
+
 # =========================================================================
 # protect() — public API
 # =========================================================================
@@ -409,9 +465,25 @@ def _protect_impl(
     final_gateway_mode = merged.get("gateway_mode") or {}
     final_api_mode = merged.get("api_mode") or {}
 
+    # Validate api_mode.llm / api_mode.mcp are dicts if present
+    from .exceptions import ConfigurationError as _CfgErr
+
+    _raw_llm = final_api_mode.get("llm")
+    if _raw_llm is not None and not isinstance(_raw_llm, dict):
+        raise _CfgErr(
+            f"api_mode.llm must be a dict with keys like 'mode', 'endpoint', 'api_key'; "
+            f"got {type(_raw_llm).__name__}: {_raw_llm!r}"
+        )
+    _raw_mcp = final_api_mode.get("mcp")
+    if _raw_mcp is not None and not isinstance(_raw_mcp, dict):
+        raise _CfgErr(
+            f"api_mode.mcp must be a dict with keys like 'mode', 'endpoint', 'api_key'; "
+            f"got {type(_raw_mcp).__name__}: {_raw_mcp!r}"
+        )
+
     # Extract API mode strings for patching decisions
-    api_llm_cfg = final_api_mode.get("llm") or {}
-    api_mcp_cfg = final_api_mode.get("mcp") or {}
+    api_llm_cfg = _raw_llm or {}
+    api_mcp_cfg = _raw_mcp or {}
     api_mode_llm_str = api_llm_cfg.get("mode")
     api_mode_mcp_str = api_mcp_cfg.get("mode")
 
@@ -438,6 +510,14 @@ def _protect_impl(
     final_pool_max_keepalive = pool_max_keepalive
     if final_pool_max_keepalive is None and yaml_pool_max_keep is not None:
         final_pool_max_keepalive = int(yaml_pool_max_keep)
+
+    # Step 5b: Validate gateway entries early so misconfigurations
+    # surface at protect() time rather than on the first LLM/MCP call.
+    _validate_gateway_entries(
+        final_llm_integration,
+        final_mcp_integration,
+        final_gateway_mode,
+    )
 
     # Step 6: Store state BEFORE patching
     _state.set_state(
@@ -477,7 +557,7 @@ def _protect_impl(
     else:
         mcp_display = api_mode_mcp_str or "not configured"
 
-    print(
+    logger.info(
         f"[agentsec] LLM: {llm_display} | MCP: {mcp_display} "
         f"| Patched: {patched}"
     )

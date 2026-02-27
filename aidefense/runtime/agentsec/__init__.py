@@ -197,6 +197,62 @@ def _deep_merge(base: dict, override: dict) -> dict:
 
 
 # =========================================================================
+# Eager input validation (runs before idempotency check)
+# =========================================================================
+
+_VALID_LOG_FORMATS = {"text", "json"}
+
+
+def _validate_protect_args(
+    *,
+    config: Optional[str] = None,
+    log_format: Optional[str] = None,
+) -> None:
+    """Validate protect() arguments that should always be checked.
+
+    These validations run before the idempotency guard so that
+    misconfigurations are surfaced even on repeated protect() calls.
+
+    Only structural checks are performed here (file existence, YAML
+    syntax, root type, log_format value).  Full env-var substitution
+    is deferred to ``_protect_impl`` after ``.env`` has been loaded.
+
+    Raises:
+        FileNotFoundError: If config path does not exist on disk.
+        ConfigurationError: If config file has invalid YAML or structure.
+        ValueError: If log_format is not a supported value.
+    """
+    if config is not None:
+        import os
+
+        if not os.path.isfile(config):
+            raise FileNotFoundError(
+                f"Configuration file not found: {config}"
+            )
+
+        import yaml
+
+        try:
+            with open(config, "r") as f:
+                raw = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise ConfigurationError(
+                f"Invalid YAML in configuration file {config}: {e}"
+            )
+        if raw is not None and not isinstance(raw, dict):
+            raise ConfigurationError(
+                f"Configuration file {config} must contain a YAML mapping, "
+                f"got {type(raw).__name__}"
+            )
+
+    if log_format is not None and log_format.lower() not in _VALID_LOG_FORMATS:
+        raise ValueError(
+            f"Invalid log_format: '{log_format}'. "
+            f"Must be one of: {', '.join(sorted(_VALID_LOG_FORMATS))}"
+        )
+
+
+# =========================================================================
 # protect() — public API
 # =========================================================================
 
@@ -269,9 +325,15 @@ def protect(
         log_format: ``"text"`` or ``"json"``.
 
     Raises:
-        ConfigurationError: If config file cannot be loaded or
-            contains invalid values.
+        FileNotFoundError: If config file path does not exist.
+        ConfigurationError: If config file contains invalid YAML,
+            wrong root type, or invalid values.
+        ValueError: If log_format is not a supported value.
     """
+    # Validate inputs eagerly — these checks run even if protect() was
+    # already called, so misconfigurations are never silently accepted.
+    _validate_protect_args(config=config, log_format=log_format)
+
     # Idempotency check
     if _state.is_initialized():
         logger.debug("agentsec already initialized, skipping")

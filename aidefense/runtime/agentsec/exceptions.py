@@ -16,7 +16,7 @@
 
 """Custom exceptions for agentsec."""
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 if TYPE_CHECKING:
     from .decision import Decision
@@ -120,8 +120,12 @@ class SecurityPolicyError(AgentsecError):
     This exception is raised in enforce mode when an LLM request/response
     or MCP tool call violates security policies.
     
+    Accepts either a Decision object or a plain string message, following
+    standard Python exception conventions.
+    
     Attributes:
-        decision: The Decision object that triggered this error
+        decision: The Decision object that triggered this error (None if
+            constructed with a plain string)
         message: Human-readable description of why the request was blocked
     
     Example:
@@ -132,9 +136,18 @@ class SecurityPolicyError(AgentsecError):
             print(f"Decision: {e.decision}")
     """
     
-    def __init__(self, decision: "Decision", message: Optional[str] = None):
-        self.decision = decision
-        self.message = message or self._format_message(decision)
+    def __init__(self, decision_or_message: "Union[Decision, str]", message: Optional[str] = None):
+        from .decision import Decision
+
+        if isinstance(decision_or_message, str):
+            self.decision = None
+            self.message = decision_or_message
+        elif isinstance(decision_or_message, Decision):
+            self.decision = decision_or_message
+            self.message = message or self._format_message(decision_or_message)
+        else:
+            self.decision = decision_or_message
+            self.message = message or "Security policy violation: request blocked"
         super().__init__(self.message)
     
     def _format_message(self, decision: "Decision") -> str:
@@ -148,4 +161,6 @@ class SecurityPolicyError(AgentsecError):
         return self.message
     
     def __repr__(self) -> str:
-        return f"SecurityPolicyError(action={self.decision.action!r}, reasons={self.decision.reasons!r})"
+        if self.decision is not None:
+            return f"SecurityPolicyError(action={self.decision.action!r}, reasons={self.decision.reasons!r})"
+        return f"SecurityPolicyError({self.message!r})"

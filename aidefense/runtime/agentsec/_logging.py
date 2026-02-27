@@ -149,6 +149,12 @@ def setup_logging(
     
     # Determine format from param, env, or default
     fmt = format_type or os.environ.get("AGENTSEC_LOG_FORMAT", "text")
+    _valid_log_formats = {"text", "json"}
+    if fmt.lower() not in _valid_log_formats:
+        raise ValueError(
+            f"Invalid log_format: '{fmt}'. "
+            f"Must be one of: {', '.join(sorted(_valid_log_formats))}"
+        )
     base_formatter: logging.Formatter
     if fmt.lower() == "json":
         base_formatter = JSONFormatter()

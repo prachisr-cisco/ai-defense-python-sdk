@@ -131,9 +131,11 @@ class HttpInspectionClient(InspectionClient):
         )
 
         if http_req:
-            ensure_base64_body(convert(http_req))
+            http_req = convert(http_req)
+            ensure_base64_body(http_req)
         if http_res:
-            ensure_base64_body(convert(http_res))
+            http_res = convert(http_res)
+            ensure_base64_body(http_res)
         return self._inspect(
             http_req,
             http_res,

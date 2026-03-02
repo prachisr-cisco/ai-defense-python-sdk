@@ -151,16 +151,41 @@ For production use, move configuration into an `agentsec.yaml` file (see [Config
 
 ## Environment Variables Quick Reference
 
-Configuration is split between two files:
+Configuration is split between two concerns:
 
-| File | Contains | Example |
-|------|----------|---------|
+| Source | Contains | Example |
+|--------|----------|---------|
 | **`agentsec.yaml`** | Integration modes, gateway URLs, timeouts, inspection modes | `llm_integration_mode: gateway` |
-| **`.env`** | Secrets, credentials, and environment-specific settings | `OPENAI_API_KEY=sk-...` |
+| **Environment variables** | Secrets, credentials, and environment-specific settings | `OPENAI_API_KEY=sk-...` |
 
-> **Tip**: `agentsec.yaml` references secrets from `.env` using `${VAR_NAME}` syntax (e.g., `gateway_api_key: ${OPENAI_API_KEY}`). Gateway mode uses the same provider API keys as API mode — no separate gateway-specific keys are needed.
+### How `agentsec.yaml` References Environment Variables
 
-For the complete list of every `.env` variable, every `agentsec.yaml` parameter (with types, allowed values, and defaults), and every `protect()` kwarg, see **[CONFIGURATION.md](CONFIGURATION.md)**.
+`agentsec.yaml` can reference environment variables using `${VAR_NAME}` syntax. These are resolved at runtime when `agentsec.protect()` parses the configuration -- keeping secrets out of version control while maintaining a single, readable config file.
+
+```yaml
+# agentsec.yaml — references environment variables at runtime
+gateway_mode:
+  llm_gateways:
+    openai-1:
+      gateway_url: https://gateway.example.com/openai-conn
+      gateway_api_key: ${OPENAI_API_KEY}    # resolved from the environment at runtime
+```
+
+How you provision these variables is up to you. Common approaches include:
+
+- **`.env` file** -- place a `.env` alongside `agentsec.yaml` and let the SDK load it automatically (`auto_dotenv=True`, the default)
+- **Shell exports** -- `export OPENAI_API_KEY=sk-...` before running your application
+- **Secrets manager** -- fetch values from HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, etc. at startup
+- **CI/CD pipeline** -- inject variables via GitHub Actions secrets, GitLab CI variables, or your platform's native mechanism
+- **Container orchestration** -- Kubernetes Secrets, ECS task definitions, Cloud Run env config, etc.
+
+The provided `.env.example` lists every variable the examples support. Use it as a **reference** for which keys your integration needs -- it is not a requirement. Only set the variables relevant to your setup.
+
+> **Note**: `protect()` sets `auto_dotenv=True` by default, which loads a `.env` file if one is present in the working directory. Set `auto_dotenv=False` if you manage environment variables through other means and want to avoid implicit file loading.
+
+> **Tip**: Gateway mode uses the same provider API keys as API mode -- no separate gateway-specific keys are needed.
+
+For the complete list of every environment variable, every `agentsec.yaml` parameter (with types, allowed values, and defaults), and every `protect()` kwarg, see **[CONFIGURATION.md](CONFIGURATION.md)**.
 
 ### By Example Path
 

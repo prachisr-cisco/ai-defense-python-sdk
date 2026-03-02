@@ -45,7 +45,7 @@ The SDK enables you to detect security, privacy, and safety risks in real time, 
 
 ## Features
 
-- **Runtime Protection**: Auto-patch LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI) and MCP clients with just 2 lines of code. Supports API mode (inspection) and Gateway mode (proxy).
+- **Runtime Protection**: Auto-patch LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI, Cohere, Mistral, Google GenAI, LiteLLM) and MCP clients with just 2 lines of code. Supports API mode (inspection) and Gateway mode (proxy).
 - **Chat Inspection**: Analyze chat prompts, responses, or full conversations for risks.
 - **HTTP Inspection**: Inspect HTTP requests and responses, including support for `requests.Request`, `requests.PreparedRequest`, and `requests.Response` objects.
 - **MCP Inspection**: Inspect Model Context Protocol (MCP) JSON-RPC 2.0 messages for security, privacy, and safety violations in AI agent tool calls, resource access, and responses.
@@ -122,9 +122,9 @@ The easiest way to protect your AI applications is with automatic runtime protec
 
 ```python
 from aidefense.runtime import agentsec
-agentsec.protect()  # Auto-configures from environment variables
+agentsec.protect(config="agentsec.yaml")
 
-# Import your LLM client — it's automatically protected
+# Import your LLM client AFTER protect() — it's automatically patched
 from openai import OpenAI
 client = OpenAI()
 
@@ -135,17 +135,24 @@ response = client.chat.completions.create(
 )
 ```
 
-Configure via environment variables:
+Or configure programmatically without a YAML file:
 
-```bash
-# API Mode (recommended for most deployments)
-AGENTSEC_LLM_INTEGRATION_MODE=api
-AI_DEFENSE_API_MODE_LLM_ENDPOINT=https://api.inspect.aidefense.cisco.com/api
-AI_DEFENSE_API_MODE_LLM_API_KEY=your-api-key
-AGENTSEC_API_MODE_LLM=enforce  # or monitor, off
+```python
+import os
+from aidefense.runtime import agentsec
+
+agentsec.protect(
+    api_mode={
+        "llm": {
+            "mode": "monitor",       # "enforce" to block, "monitor" to log only
+            "endpoint": os.environ["AI_DEFENSE_API_MODE_LLM_ENDPOINT"],
+            "api_key": os.environ["AI_DEFENSE_API_MODE_LLM_API_KEY"],
+        }
+    }
+)
 ```
 
-See [Runtime Protection](#runtime-protection) for detailed configuration options.
+See [Runtime Protection](#runtime-protection) for detailed configuration options and the [agentsec examples](examples/agentsec/README.md) for end-to-end walkthroughs.
 
 ### Inspection API
 
@@ -234,8 +241,8 @@ print(resp.task_id)
 ### Runtime Protection (agentsec)
 
 - `runtime/agentsec/__init__.py` — Main entry point with `protect()` function
-- `runtime/agentsec/config.py` — Configuration loading from environment/parameters
-- `runtime/agentsec/patchers/` — Auto-patching for LLM clients (OpenAI, Bedrock, Vertex AI, MCP)
+- `runtime/agentsec/config_file.py` — Configuration loading from `agentsec.yaml` with `${VAR}` substitution
+- `runtime/agentsec/patchers/` — Auto-patching for LLM clients (OpenAI, Azure OpenAI, Bedrock, Vertex AI, Cohere, Mistral, Google GenAI, LiteLLM, MCP)
 - `runtime/agentsec/inspectors/` — API and Gateway mode inspectors for LLM and MCP
 - `runtime/agentsec/decision.py` — Decision model for inspection results
 - `runtime/agentsec/exceptions.py` — SecurityPolicyError for blocked requests
@@ -285,45 +292,71 @@ print(resp.task_id)
 
 Runtime protection automatically patches LLM and MCP clients to inspect all interactions with Cisco AI Defense.
 
-#### API Mode (Default)
+#### YAML Configuration (Recommended)
 
-In API mode, the SDK inspects requests via the AI Defense API, then calls the LLM provider directly.
+Use an `agentsec.yaml` file for production-grade configuration. The YAML can reference environment variables using `${VAR_NAME}` syntax -- how you provision those variables (shell exports, secrets manager, CI/CD injection, `.env` file, etc.) is up to you.
 
 ```python
 from aidefense.runtime import agentsec
+agentsec.protect(config="agentsec.yaml")
 
-agentsec.protect(
-    llm_integration_mode="api",
-    api_mode_llm="enforce",  # monitor, enforce, or off
-    api_mode_llm_endpoint="https://api.inspect.aidefense.cisco.com/api",
-    api_mode_llm_api_key="your-api-key",
-    api_mode_fail_open_llm=True,  # Allow requests if API is unavailable
-)
-
+# Import LLM client AFTER protect() -- it's automatically patched
 from openai import OpenAI
 client = OpenAI()
 
-# All calls are automatically inspected
 response = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[{"role": "user", "content": "Hello!"}]
 )
 ```
 
-#### Gateway Mode
+#### API Mode (Programmatic)
+
+In API mode, the SDK inspects requests via the AI Defense API, then calls the LLM provider directly.
+
+```python
+import os
+from aidefense.runtime import agentsec
+
+agentsec.protect(
+    llm_integration_mode="api",
+    api_mode={
+        "llm": {
+            "mode": "enforce",      # "monitor" to log only, "enforce" to block, "off" to disable
+            "endpoint": os.environ["AI_DEFENSE_API_MODE_LLM_ENDPOINT"],
+            "api_key": os.environ["AI_DEFENSE_API_MODE_LLM_API_KEY"],
+        }
+    },
+)
+
+from openai import OpenAI
+client = OpenAI()
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+#### Gateway Mode (Programmatic)
 
 In Gateway mode, all traffic is routed through the Cisco AI Defense Gateway proxy.
 
 ```python
+import os
 from aidefense.runtime import agentsec
 
 agentsec.protect(
     llm_integration_mode="gateway",
-    gateway_mode_llm="on",
-    providers={
-        "openai": {
-            "gateway_url": "https://gateway.aidefense.cisco.com/tenant/connections/openai-conn",
-            "gateway_api_key": "your-gateway-key",
+    gateway_mode={
+        "llm_gateways": {
+            "openai-1": {
+                "gateway_url": "https://gateway.aidefense.cisco.com/tenant/connections/openai-conn",
+                "gateway_api_key": os.environ["OPENAI_API_KEY"],
+                "auth_mode": "api_key",
+                "provider": "openai",
+                "default": True,
+            },
         },
     },
 )
@@ -331,7 +364,6 @@ agentsec.protect(
 from openai import OpenAI
 client = OpenAI()
 
-# Calls are routed through the gateway
 response = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[{"role": "user", "content": "Hello!"}]
@@ -341,15 +373,13 @@ response = client.chat.completions.create(
 #### Skip Inspection for Specific Calls
 
 ```python
-from aidefense.runtime import skip_inspection
+from aidefense.runtime.agentsec import skip_inspection, no_inspection
 
-# Skip inspection for specific calls
+# Context manager -- skip specific calls
 with skip_inspection():
     response = client.chat.completions.create(...)
 
-# Or use as a decorator
-from aidefense.runtime import no_inspection
-
+# Decorator -- skip an entire function
 @no_inspection()
 def health_check():
     return client.chat.completions.create(...)
@@ -358,7 +388,7 @@ def health_check():
 #### Error Handling
 
 ```python
-from aidefense.runtime import SecurityPolicyError
+from aidefense.runtime.agentsec import SecurityPolicyError
 
 try:
     response = client.chat.completions.create(...)
@@ -369,13 +399,19 @@ except SecurityPolicyError as e:
 
 #### Supported Clients
 
-| Client | Package | API Mode | Gateway Mode |
-|--------|---------|----------|--------------|
-| OpenAI | `openai` | ✅ | ✅ |
-| Azure OpenAI | `openai` | ✅ | ✅ |
-| AWS Bedrock | `boto3` | ✅ | ✅ |
-| Vertex AI | `google-cloud-aiplatform` | ✅ | ✅ |
-| MCP | `mcp` | ✅ | ✅ |
+| Provider | Package | Patched Methods |
+|----------|---------|-----------------|
+| **OpenAI** | `openai` | `chat.completions.create()` |
+| **Azure OpenAI** | `openai` | `chat.completions.create()` (with Azure endpoint) |
+| **AWS Bedrock** | `boto3` | `converse()`, `converse_stream()` |
+| **Google Vertex AI** | `google-cloud-aiplatform` | `GenerativeModel.generate_content()`, `generate_content_async()` |
+| **Google GenAI** | `google-genai` | `generate_content()`, `generate_content_async()` |
+| **Cohere** | `cohere` | `V2Client.chat()`, `V2Client.chat_stream()`, `AsyncV2Client.chat()`, `AsyncV2Client.chat_stream()` |
+| **Mistral AI** | `mistralai` | `Chat.complete()`, `Chat.stream()`, `Chat.complete_async()`, `Chat.stream_async()` |
+| **LiteLLM** | `litellm` | `completion()`, `acompletion()` |
+| **MCP** | `mcp` | `ClientSession.call_tool()`, `ClientSession.list_tools()` |
+
+For end-to-end examples across frameworks (LangChain, CrewAI, Strands, etc.) and cloud runtimes (AWS Bedrock AgentCore, GCP Vertex AI Agent Engine, Azure AI Foundry), see the [agentsec examples](examples/agentsec/README.md).
 
 ### Chat Inspection
 

@@ -348,7 +348,6 @@ class MCPInspectionClient(InspectionClient):
             request_id=request_id,
             timeout=timeout,
         )
-        self.config.logger.debug(f"Raw API response: {result}")
         return self._parse_mcp_inspect_response(result)
 
     def validate_mcp_message(self, request_dict: Dict[str, Any]) -> None:

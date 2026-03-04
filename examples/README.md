@@ -10,20 +10,24 @@ The examples are organized into the following categories:
 examples/
 ├── README.md                    # This file
 ├── agentsec/                    # Runtime protection examples (RECOMMENDED)
-│   ├── 1_simple/                # Simple standalone examples
+│   ├── 1-simple/                # Simple standalone examples
 │   │   ├── basic_protection.py
 │   │   ├── openai_example.py
 │   │   ├── streaming_example.py
 │   │   ├── mcp_example.py
 │   │   ├── gateway_mode_example.py
 │   │   └── skip_inspection_example.py
-│   └── 2_agent-frameworks/      # Agent framework integrations
-│       ├── strands-agent/       # AWS Strands + MCP
-│       ├── langchain-agent/     # LangChain with tool calling
-│       ├── langgraph-agent/     # LangGraph + MCP
-│       ├── crewai-agent/        # CrewAI + MCP
-│       ├── autogen-agent/       # AutoGen + MCP
-│       └── openai-agent/        # OpenAI Agents SDK
+│   ├── 2-agent-frameworks/      # Agent framework integrations
+│   │   ├── strands-agent/       # AWS Strands + MCP
+│   │   ├── langchain-agent/     # LangChain with tool calling
+│   │   ├── langgraph-agent/     # LangGraph + MCP
+│   │   ├── crewai-agent/        # CrewAI + MCP
+│   │   ├── autogen-agent/       # AutoGen + MCP
+│   │   └── openai-agent/        # OpenAI Agents SDK
+│   └── 3-agent-runtimes/        # Managed agent runtime integrations
+│       ├── amazon-bedrock-agentcore/  # Amazon Bedrock AgentCore
+│       ├── gcp-vertex-ai-agent-engine/ # GCP Vertex AI Agent Engine
+│       └── microsoft-foundry/   # Microsoft AI Foundry
 ├── chat/                        # Chat inspection examples
 │   ├── chat_inspect_conversation.py
 │   ├── chat_inspect_multiple_clients.py
@@ -77,23 +81,31 @@ response = client.chat.completions.create(
 
 | Example | Description |
 |---------|-------------|
-| [basic_protection.py](./agentsec/1_simple/basic_protection.py) | Minimal 2-line protection example |
-| [openai_example.py](./agentsec/1_simple/openai_example.py) | OpenAI client with protection |
-| [streaming_example.py](./agentsec/1_simple/streaming_example.py) | Streaming responses |
-| [mcp_example.py](./agentsec/1_simple/mcp_example.py) | MCP tool inspection |
-| [gateway_mode_example.py](./agentsec/1_simple/gateway_mode_example.py) | Gateway mode configuration |
-| [skip_inspection_example.py](./agentsec/1_simple/skip_inspection_example.py) | Per-call exclusion |
+| [basic_protection.py](./agentsec/1-simple/basic_protection.py) | Minimal 2-line protection example |
+| [openai_example.py](./agentsec/1-simple/openai_example.py) | OpenAI client with protection |
+| [streaming_example.py](./agentsec/1-simple/streaming_example.py) | Streaming responses |
+| [mcp_example.py](./agentsec/1-simple/mcp_example.py) | MCP tool inspection |
+| [gateway_mode_example.py](./agentsec/1-simple/gateway_mode_example.py) | Gateway mode configuration |
+| [skip_inspection_example.py](./agentsec/1-simple/skip_inspection_example.py) | Per-call exclusion |
 
 ### Agent Framework Examples
 
 | Framework | Directory | Description |
 |-----------|-----------|-------------|
-| AWS Strands | [strands-agent/](./agentsec/2_agent-frameworks/strands-agent/) | Strands agent with MCP tools |
-| LangChain | [langchain-agent/](./agentsec/2_agent-frameworks/langchain-agent/) | LangChain with tool calling |
-| LangGraph | [langgraph-agent/](./agentsec/2_agent-frameworks/langgraph-agent/) | LangGraph agent with MCP |
-| CrewAI | [crewai-agent/](./agentsec/2_agent-frameworks/crewai-agent/) | CrewAI multi-agent with MCP |
-| AutoGen | [autogen-agent/](./agentsec/2_agent-frameworks/autogen-agent/) | AutoGen conversational agent |
-| OpenAI Agents | [openai-agent/](./agentsec/2_agent-frameworks/openai-agent/) | OpenAI Agents SDK |
+| AWS Strands | [strands-agent/](./agentsec/2-agent-frameworks/strands-agent/) | Strands agent with MCP tools |
+| LangChain | [langchain-agent/](./agentsec/2-agent-frameworks/langchain-agent/) | LangChain with tool calling |
+| LangGraph | [langgraph-agent/](./agentsec/2-agent-frameworks/langgraph-agent/) | LangGraph agent with MCP |
+| CrewAI | [crewai-agent/](./agentsec/2-agent-frameworks/crewai-agent/) | CrewAI multi-agent with MCP |
+| AutoGen | [autogen-agent/](./agentsec/2-agent-frameworks/autogen-agent/) | AutoGen conversational agent |
+| OpenAI Agents | [openai-agent/](./agentsec/2-agent-frameworks/openai-agent/) | OpenAI Agents SDK |
+
+### Agent Runtime Examples
+
+| Runtime | Directory | Description |
+|---------|-----------|-------------|
+| Amazon Bedrock AgentCore | [amazon-bedrock-agentcore/](./agentsec/3-agent-runtimes/amazon-bedrock-agentcore/) | AgentCore with AI Defense protection |
+| GCP Vertex AI Agent Engine | [gcp-vertex-ai-agent-engine/](./agentsec/3-agent-runtimes/gcp-vertex-ai-agent-engine/) | Vertex AI Agent Engine with protection |
+| Microsoft AI Foundry | [microsoft-foundry/](./agentsec/3-agent-runtimes/microsoft-foundry/) | Microsoft AI Foundry with protection |
 
 ### Supported LLM Clients
 
@@ -101,8 +113,13 @@ response = client.chat.completions.create(
 |--------|---------|----------|--------------|
 | OpenAI | `openai` | ✅ | ✅ |
 | Azure OpenAI | `openai` | ✅ | ✅ |
+| Azure AI Inference | `azure-ai-inference` | ✅ | ✅ |
 | AWS Bedrock | `boto3` | ✅ | ✅ |
-| Vertex AI | `google-cloud-aiplatform` | ✅ | ✅ |
+| Google Vertex AI | `google-cloud-aiplatform` | ✅ | ✅ |
+| Google GenAI | `google-genai` | ✅ | ✅ |
+| Cohere | `cohere` | ✅ | ✅ |
+| Mistral AI | `mistralai` | ✅ | ✅ |
+| LiteLLM | `litellm` | ✅ | ✅ |
 | MCP | `mcp` | ✅ | ✅ |
 
 ### Environment Variables
@@ -189,12 +206,12 @@ export AGENTSEC_API_MODE_LLM=enforce
 export OPENAI_API_KEY=your-openai-key
 
 # Run simple examples
-python examples/agentsec/1_simple/basic_protection.py
-python examples/agentsec/1_simple/openai_example.py
+python examples/agentsec/1-simple/basic_protection.py
+python examples/agentsec/1-simple/openai_example.py
 
 # Run agent examples (with provider selection)
-./examples/agentsec/2_agent-frameworks/strands-agent/scripts/run.sh --openai
-./examples/agentsec/2_agent-frameworks/strands-agent/scripts/run.sh --bedrock
+./examples/agentsec/2-agent-frameworks/strands-agent/scripts/run.sh --openai
+./examples/agentsec/2-agent-frameworks/strands-agent/scripts/run.sh --bedrock
 ```
 
 ### Inspection Examples
@@ -203,8 +220,8 @@ python examples/agentsec/1_simple/openai_example.py
 # Install the SDK
 pip install cisco-aidefense-sdk
 
-# Set your API key
-export AI_DEFENSE_INSPECTION_API_KEY=your-api-key
+# Set your API key (used by ChatInspectionClient and HttpInspectionClient)
+export AIDEFENSE_API_KEY=your-api-key
 
 # Run chat inspection example
 python examples/chat/chat_inspect_prompt.py

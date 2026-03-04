@@ -128,6 +128,63 @@ gateway_mode:
       aws_region: ${BEDROCK_2_AWS_REGION}
       aws_profile: ${BEDROCK_2_AWS_PROFILE}
 
+    # -- Auth variant examples (uncomment to test specific auth methods) -----
+
+    # Bedrock with explicit IAM keys (static or STS temporary credentials)
+    # bedrock-explicit-keys:
+    #   gateway_url: ${BEDROCK_1_GATEWAY_URL}
+    #   auth_mode: aws_sigv4
+    #   provider: bedrock
+    #   aws_region: ${BEDROCK_1_AWS_REGION}
+    #   aws_access_key_id: ${BEDROCK_1_AWS_ACCESS_KEY_ID}
+    #   aws_secret_access_key: ${BEDROCK_1_AWS_SECRET_ACCESS_KEY}
+    #   aws_session_token: ${BEDROCK_1_AWS_SESSION_TOKEN}
+
+    # Bedrock with cross-account assume role
+    # bedrock-assume-role:
+    #   gateway_url: ${BEDROCK_1_GATEWAY_URL}
+    #   auth_mode: aws_sigv4
+    #   provider: bedrock
+    #   aws_region: ${BEDROCK_1_AWS_REGION}
+    #   aws_role_arn: ${BEDROCK_1_AWS_ROLE_ARN}
+
+    # Bedrock with Bearer API key (non-SigV4 gateway)
+    # bedrock-api-key:
+    #   gateway_url: ${BEDROCK_1_GATEWAY_URL}
+    #   auth_mode: api_key
+    #   gateway_api_key: ${BEDROCK_GATEWAY_API_KEY}
+    #   provider: bedrock
+
+    # Vertex AI with explicit service account key file
+    # vertexai-sa-key:
+    #   gateway_url: ${VERTEXAI_1_GATEWAY_URL}
+    #   auth_mode: google_adc
+    #   provider: vertexai
+    #   sdk: ${GOOGLE_AI_SDK}
+    #   gcp_project: ${VERTEXAI_1_GCP_PROJECT}
+    #   gcp_location: ${VERTEXAI_1_GCP_LOCATION}
+    #   gcp_service_account_key_file: ${VERTEXAI_1_SA_KEY_FILE}
+
+    # Vertex AI with service account impersonation
+    # vertexai-impersonation:
+    #   gateway_url: ${VERTEXAI_1_GATEWAY_URL}
+    #   auth_mode: google_adc
+    #   provider: vertexai
+    #   sdk: ${GOOGLE_AI_SDK}
+    #   gcp_project: ${VERTEXAI_1_GCP_PROJECT}
+    #   gcp_location: ${VERTEXAI_1_GCP_LOCATION}
+    #   gcp_target_service_account: ${VERTEXAI_1_TARGET_SA}
+
+    # Vertex AI with Bearer API key (non-ADC gateway)
+    # vertexai-api-key:
+    #   gateway_url: ${VERTEXAI_1_GATEWAY_URL}
+    #   auth_mode: api_key
+    #   gateway_api_key: ${VERTEXAI_GATEWAY_API_KEY}
+    #   provider: vertexai
+    #   sdk: ${GOOGLE_AI_SDK}
+    #   gcp_project: ${VERTEXAI_1_GCP_PROJECT}
+    #   gcp_location: ${VERTEXAI_1_GCP_LOCATION}
+
 
   # MCP Gateways (keyed by original MCP server URL)
   # Each MCP server that should be routed through a gateway must be listed

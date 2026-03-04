@@ -620,7 +620,7 @@ def _handle_agentcore_api_mode(operation_name: str, api_params: Dict, wrapped, a
     except SecurityPolicyError:
         raise
     except Exception as e:
-        logger.warning(f"[AgentCore.{operation_name} post-call] Inspection error: {e}")
+        _handle_patcher_error(e, f"AgentCore.{operation_name} post-call")
     
     logger.debug(f"[PATCHED CALL] AgentCore.{operation_name} - complete")
     return response
@@ -1325,7 +1325,7 @@ def _wrap_make_api_call(wrapped, instance, args, kwargs):
         except SecurityPolicyError:
             raise
         except Exception as e:
-            logger.warning(f"[Bedrock.{operation_name} post-call] Inspection error: {e}")
+            _handle_patcher_error(e, f"Bedrock.{operation_name} post-call")
     else:
         logger.debug(f"[PATCHED CALL] Bedrock.{operation_name} - streaming response, Response inspection deferred")
     

@@ -612,7 +612,6 @@ class HttpInspectionClient(InspectionClient):
             request_id=request_id,
             timeout=timeout,
         )
-        self.config.logger.debug(f"Raw API response: {result}")
         return self._parse_inspect_response(result)
 
     def _prepare_request_data(self, request: HttpInspectRequest) -> Dict[str, Any]:

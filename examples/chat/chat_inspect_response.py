@@ -18,9 +18,11 @@
 Example: Using inspect_response for chat AI response inspection
 """
 
+import os
+
 from aidefense import ChatInspectionClient
 
-client = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY")
+client = ChatInspectionClient(api_key=os.environ["AIDEFENSE_API_KEY"])
 
 result = client.inspect_response("Here is some code ...")
 print("Is safe?", result.is_safe)

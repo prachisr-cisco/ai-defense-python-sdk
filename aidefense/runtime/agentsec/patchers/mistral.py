@@ -344,7 +344,7 @@ class _MistralStreamingInspectionWrapper:
         except SecurityPolicyError:
             raise
         except Exception as e:
-            logger.warning(f"Mistral streaming inspection error: {e}")
+            _handle_patcher_error(e, "Mistral streaming inspection")
 
 
 class _MistralAsyncStreamingInspectionWrapper:
@@ -397,7 +397,7 @@ class _MistralAsyncStreamingInspectionWrapper:
         except SecurityPolicyError:
             raise
         except Exception as e:
-            logger.warning(f"Mistral async streaming inspection error: {e}")
+            _handle_patcher_error(e, "Mistral async streaming inspection")
 
 
 class _MistralFakeStreamWrapper:
@@ -483,7 +483,7 @@ def _wrap_complete(wrapped, instance, args, kwargs):
     except SecurityPolicyError:
         raise
     except Exception as e:
-        logger.warning(f"[Mistral.chat.complete post-call] Inspection error: {e}")
+        _handle_patcher_error(e, "Mistral.chat.complete post-call")
     return response
 
 
@@ -564,7 +564,7 @@ async def _wrap_complete_async(wrapped, instance, args, kwargs):
     except SecurityPolicyError:
         raise
     except Exception as e:
-        logger.warning(f"[Mistral.chat.complete_async post-call] Inspection error: {e}")
+        _handle_patcher_error(e, "Mistral.chat.complete_async post-call")
     return response
 
 

@@ -18,13 +18,16 @@
 Example: Creating two ChatInspectionClient instances with a shared Config and calling different methods
 """
 
+import os
+
 from aidefense import ChatInspectionClient, Config
 from aidefense.runtime import Message, Role
 
 config = Config(logger_params={"level": "DEBUG"})
 
-client1 = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
-client2 = ChatInspectionClient(api_key="YOUR_INSPECTION_API_KEY", config=config)
+api_key = os.environ["AIDEFENSE_API_KEY"]
+client1 = ChatInspectionClient(api_key=api_key, config=config)
+client2 = ChatInspectionClient(api_key=api_key, config=config)
 
 # Use client1 to inspect a prompt
 result1 = client1.inspect_prompt("Is this a safe prompt?")

@@ -362,7 +362,10 @@ async def _wrap_call_tool(wrapped, instance, args, kwargs):
         raise
     except Exception as e:
         logger.warning(f"[PATCHED CALL] MCP.call_tool({tool_name}) - Response inspection error: {e}")
-        # Mark inspection as done (fail-open) so context is not left incomplete
+        fail_open = getattr(inspector, 'fail_open', _state.get_api_mcp_fail_open())
+        if not fail_open:
+            decision = Decision.block(reasons=[f"MCP response inspection error: {e}"])
+            raise SecurityPolicyError(decision, f"MCP response inspection failed and fail_open=False: {e}")
         set_inspection_context(decision=Decision.allow(reasons=[f"MCP response inspection error: {e}"]), done=True)
     
     logger.debug(f"[PATCHED CALL] MCP.call_tool({tool_name}) - complete")
@@ -441,7 +444,10 @@ async def _wrap_get_prompt(wrapped, instance, args, kwargs):
         raise
     except Exception as e:
         logger.warning(f"[PATCHED CALL] MCP.get_prompt({prompt_name}) - Response inspection error: {e}")
-        # Mark inspection as done (fail-open) so context is not left incomplete
+        fail_open = getattr(inspector, 'fail_open', _state.get_api_mcp_fail_open())
+        if not fail_open:
+            decision = Decision.block(reasons=[f"MCP response inspection error: {e}"])
+            raise SecurityPolicyError(decision, f"MCP response inspection failed and fail_open=False: {e}")
         set_inspection_context(decision=Decision.allow(reasons=[f"MCP response inspection error: {e}"]), done=True)
     
     logger.debug(f"[PATCHED CALL] MCP.get_prompt({prompt_name}) - complete")
@@ -517,7 +523,10 @@ async def _wrap_read_resource(wrapped, instance, args, kwargs):
         raise
     except Exception as e:
         logger.warning(f"[PATCHED CALL] MCP.read_resource({resource_uri}) - Response inspection error: {e}")
-        # Mark inspection as done (fail-open) so context is not left incomplete
+        fail_open = getattr(inspector, 'fail_open', _state.get_api_mcp_fail_open())
+        if not fail_open:
+            decision = Decision.block(reasons=[f"MCP response inspection error: {e}"])
+            raise SecurityPolicyError(decision, f"MCP response inspection failed and fail_open=False: {e}")
         set_inspection_context(decision=Decision.allow(reasons=[f"MCP response inspection error: {e}"]), done=True)
     
     logger.debug(f"[PATCHED CALL] MCP.read_resource({resource_uri}) - complete")

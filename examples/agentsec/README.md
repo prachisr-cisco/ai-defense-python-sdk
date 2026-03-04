@@ -1174,6 +1174,7 @@ cd /path/to/ai-defense-python-sdk
 | MCP tool calls not inspected | Ensure `mcp` package is installed and `api_mode.mcp.mode` is set in `agentsec.yaml` |
 | Poetry version error | Remove `package-mode = false` from pyproject.toml if using older Poetry |
 | Vertex AI gateway 400 `Invalid JSON payload` | Known AI Defense gateway limitation: request bodies larger than ~2700 bytes are corrupted during forwarding. Use `llm_integration_mode: api` for Vertex AI / google-genai until the gateway team resolves this. |
+| macOS SSL certificate error (`[SSL: CERTIFICATE_VERIFY_FAILED]`) | Run `/Applications/Python 3.x/Install Certificates.command` (replace `3.x` with your version) or `pip install certifi && python -c "import certifi; print(certifi.where())"` and set `SSL_CERT_FILE` to the output path. See [Python on macOS SSL guide](https://github.com/python/cpython/blob/main/Mac/README.rst). |
 
 ### GCP credentials and resources (Vertex tests)
 

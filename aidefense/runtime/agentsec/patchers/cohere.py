@@ -385,7 +385,7 @@ class _CohereStreamingInspectionWrapper:
         except SecurityPolicyError:
             raise
         except Exception as e:
-            logger.warning(f"Cohere streaming inspection error: {e}")
+            _handle_patcher_error(e, "Cohere streaming inspection")
 
 
 class _CohereAsyncStreamingInspectionWrapper:
@@ -441,7 +441,7 @@ class _CohereAsyncStreamingInspectionWrapper:
         except SecurityPolicyError:
             raise
         except Exception as e:
-            logger.warning(f"Cohere async streaming inspection error: {e}")
+            _handle_patcher_error(e, "Cohere async streaming inspection")
 
 
 class _CohereFakeStreamWrapper:
@@ -523,7 +523,7 @@ def _wrap_chat(wrapped, instance, args, kwargs):
     except SecurityPolicyError:
         raise
     except Exception as e:
-        logger.warning(f"[Cohere.chat post-call] Inspection error: {e}")
+        _handle_patcher_error(e, "Cohere.chat post-call")
     return response
 
 
@@ -601,7 +601,7 @@ async def _wrap_chat_async(wrapped, instance, args, kwargs):
     except SecurityPolicyError:
         raise
     except Exception as e:
-        logger.warning(f"[Cohere.async.chat post-call] Inspection error: {e}")
+        _handle_patcher_error(e, "Cohere.async.chat post-call")
     return response
 
 

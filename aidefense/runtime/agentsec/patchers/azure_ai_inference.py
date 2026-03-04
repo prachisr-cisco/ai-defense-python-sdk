@@ -509,6 +509,7 @@ class _StreamingInspectionWrapper:
         self._final_inspection_done = True
         if self._buffer:
             self._inspect_buffer()
+        set_inspection_context(done=True)
 
     def _inspect_buffer(self):
         if not self._buffer or not _should_inspect():
@@ -518,12 +519,12 @@ class _StreamingInspectionWrapper:
         ]
         try:
             decision = self._inspector.inspect_conversation(messages_with_response, self._metadata)
-            set_inspection_context(decision=decision, done=True)
+            set_inspection_context(decision=decision)
             _enforce_decision(decision)
         except SecurityPolicyError:
             raise
         except Exception as e:
-            logger.warning(f"Streaming inspection error: {e}")
+            _handle_patcher_error(e, "azure_ai_inference streaming inspection")
 
 
 class _AsyncStreamingInspectionWrapper:
@@ -575,6 +576,7 @@ class _AsyncStreamingInspectionWrapper:
         self._final_inspection_done = True
         if self._buffer:
             await self._inspect_buffer()
+        set_inspection_context(done=True)
 
     async def _inspect_buffer(self):
         if not self._buffer or not _should_inspect():
@@ -584,12 +586,12 @@ class _AsyncStreamingInspectionWrapper:
         ]
         try:
             decision = await self._inspector.ainspect_conversation(messages_with_response, self._metadata)
-            set_inspection_context(decision=decision, done=True)
+            set_inspection_context(decision=decision)
             _enforce_decision(decision)
         except SecurityPolicyError:
             raise
         except Exception as e:
-            logger.warning(f"Async streaming inspection error: {e}")
+            _handle_patcher_error(e, "azure_ai_inference async streaming inspection")
 
 
 # =========================================================================

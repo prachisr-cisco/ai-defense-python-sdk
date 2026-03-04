@@ -322,6 +322,7 @@ class StreamingInspectionWrapper:
         
         if self._buffer:
             self._inspect_buffer()
+        set_inspection_context(done=True)
     
     def _inspect_buffer(self) -> None:
         """Inspect the buffered content."""
@@ -346,12 +347,12 @@ class StreamingInspectionWrapper:
                 messages_with_response,
                 self._metadata,
             )
-            set_inspection_context(decision=decision, done=True)
+            set_inspection_context(decision=decision)
             _enforce_decision(decision)
         except SecurityPolicyError:
             raise
         except Exception as e:
-            logger.warning(f"Streaming inspection error: {e}")
+            _handle_patcher_error(e, "OpenAI streaming inspection")
 
 
 class AsyncStreamingInspectionWrapper:
@@ -408,6 +409,7 @@ class AsyncStreamingInspectionWrapper:
         
         if self._buffer:
             await self._inspect_buffer()
+        set_inspection_context(done=True)
     
     async def _inspect_buffer(self) -> None:
         """Inspect the buffered content asynchronously."""
@@ -432,12 +434,12 @@ class AsyncStreamingInspectionWrapper:
                 messages_with_response,
                 self._metadata,
             )
-            set_inspection_context(decision=decision, done=True)
+            set_inspection_context(decision=decision)
             _enforce_decision(decision)
         except SecurityPolicyError:
             raise
         except Exception as e:
-            logger.warning(f"Async streaming inspection error: {e}")
+            _handle_patcher_error(e, "OpenAI async streaming inspection")
 
 
 def _handle_patcher_error(error: Exception, operation: str) -> Optional[Decision]:
@@ -556,8 +558,7 @@ def _wrap_chat_completions_create(wrapped, instance, args, kwargs):
     except SecurityPolicyError:
         raise
     except Exception as e:
-        # Log post-call errors but don't block - we've already made the call
-        logger.warning(f"[OpenAI.chat.completions.create post-call] Inspection error: {e}")
+        _handle_patcher_error(e, "OpenAI.chat.completions.create post-call")
     
     logger.debug(f"[PATCHED CALL] OpenAI.chat.completions.create - complete")
     return response
@@ -875,7 +876,7 @@ async def _wrap_chat_completions_create_async(wrapped, instance, args, kwargs):
     except SecurityPolicyError:
         raise
     except Exception as e:
-        logger.warning(f"[OpenAI.async post-call] Inspection error: {e}")
+        _handle_patcher_error(e, "OpenAI.async post-call")
     
     logger.debug(f"[PATCHED CALL] OpenAI.async - complete")
     return response
@@ -1104,7 +1105,7 @@ def _wrap_responses_create(wrapped, instance, args, kwargs):
     except SecurityPolicyError:
         raise
     except Exception as e:
-        logger.warning(f"[OpenAI.responses.create post-call] Inspection error: {e}")
+        _handle_patcher_error(e, "OpenAI.responses.create post-call")
     
     return response
 
@@ -1157,7 +1158,7 @@ async def _wrap_responses_create_async(wrapped, instance, args, kwargs):
     except SecurityPolicyError:
         raise
     except Exception as e:
-        logger.warning(f"[OpenAI.async.responses.create post-call] Inspection error: {e}")
+        _handle_patcher_error(e, "OpenAI.async.responses.create post-call")
     
     return response
 

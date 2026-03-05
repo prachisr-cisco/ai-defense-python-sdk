@@ -506,10 +506,32 @@ def _protect_impl(
     yaml_pool_max_keep = merged.get("pool_max_keepalive")
     final_pool_max_connections = pool_max_connections
     if final_pool_max_connections is None and yaml_pool_max_conn is not None:
-        final_pool_max_connections = int(yaml_pool_max_conn)
+        try:
+            final_pool_max_connections = int(yaml_pool_max_conn)
+        except (ValueError, TypeError):
+            raise ConfigurationError(
+                f"Invalid pool_max_connections: {yaml_pool_max_conn!r}. "
+                f"Must be an integer >= 1."
+            )
+    if final_pool_max_connections is not None and final_pool_max_connections < 1:
+        raise ConfigurationError(
+            f"Invalid pool_max_connections: {final_pool_max_connections}. "
+            f"Must be an integer >= 1."
+        )
     final_pool_max_keepalive = pool_max_keepalive
     if final_pool_max_keepalive is None and yaml_pool_max_keep is not None:
-        final_pool_max_keepalive = int(yaml_pool_max_keep)
+        try:
+            final_pool_max_keepalive = int(yaml_pool_max_keep)
+        except (ValueError, TypeError):
+            raise ConfigurationError(
+                f"Invalid pool_max_keepalive: {yaml_pool_max_keep!r}. "
+                f"Must be an integer >= 1."
+            )
+    if final_pool_max_keepalive is not None and final_pool_max_keepalive < 1:
+        raise ConfigurationError(
+            f"Invalid pool_max_keepalive: {final_pool_max_keepalive}. "
+            f"Must be an integer >= 1."
+        )
 
     # Step 5b: Validate gateway entries early so misconfigurations
     # surface at protect() time rather than on the first LLM/MCP call.

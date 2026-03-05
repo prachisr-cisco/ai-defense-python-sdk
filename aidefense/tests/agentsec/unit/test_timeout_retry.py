@@ -1438,3 +1438,185 @@ class TestMixedRetryScenarios:
         assert decision.action == "allow"
         # Should only call once — JSON error not retryable
         assert mock_client.inspect_conversation.call_count == 1
+
+
+# ===========================================================================
+# 18. Timeout Truncation — Sub-second values
+# ===========================================================================
+
+class TestTimeoutTruncation:
+    """Verify sub-second timeout_ms values don't truncate to 0 (AIFW-18900)."""
+
+    def test_sub_second_timeout_ms_clamped_to_1_second(self):
+        """timeout_ms=100 should produce at least 1-second config, not 0."""
+        inspector = LLMInspector(
+            api_key=API_KEY_64,
+            endpoint="http://test.example.com",
+            timeout_ms=100,
+            fail_open=False,
+        )
+        mock_client = MagicMock()
+        mock_client.inspect_conversation.side_effect = httpx.TimeoutException("timed out")
+        with patch.object(inspector, "_get_chat_client", return_value=mock_client):
+            with pytest.raises(InspectionTimeoutError):
+                inspector.inspect_conversation(
+                    messages=[{"role": "user", "content": "test"}],
+                    metadata={},
+                )
+
+    def test_timeout_ms_1000_produces_1_second(self):
+        """timeout_ms=1000 should produce exactly 1-second timeout."""
+        inspector = LLMInspector(
+            api_key=API_KEY_64,
+            endpoint="http://test.example.com",
+            timeout_ms=1000,
+            fail_open=False,
+        )
+        mock_client = MagicMock()
+        mock_client.inspect_conversation.side_effect = httpx.TimeoutException("timed out")
+        with patch.object(inspector, "_get_chat_client", return_value=mock_client):
+            with pytest.raises(InspectionTimeoutError) as exc_info:
+                inspector.inspect_conversation(
+                    messages=[{"role": "user", "content": "test"}],
+                    metadata={},
+                )
+        assert exc_info.value.timeout_ms == 1000
+
+
+# ===========================================================================
+# 19. SDK ApiError Retry
+# ===========================================================================
+
+class TestSDKApiErrorRetry:
+    """Verify that SDK's own ApiError (from request handler) is retried on
+    configured status codes (AIFW-18900)."""
+
+    def test_api_error_500_retried(self):
+        """ApiError with status_code=500 should be retried."""
+        from aidefense.exceptions import ApiError as SDKApiError
+
+        inspector = LLMInspector(
+            api_key=API_KEY_64,
+            endpoint="http://test.example.com",
+            retry_total=2,
+            retry_backoff=0,
+            fail_open=False,
+        )
+        mock_client = MagicMock()
+        mock_client.inspect_conversation.side_effect = [
+            SDKApiError("Server error", status_code=500),
+            _allow_response(),
+        ]
+        with patch.object(inspector, "_get_chat_client", return_value=mock_client):
+            decision = inspector.inspect_conversation(
+                messages=[{"role": "user", "content": "test"}],
+                metadata={},
+            )
+        assert decision.action == "allow"
+        assert mock_client.inspect_conversation.call_count == 2
+
+    def test_api_error_400_not_retried(self):
+        """ApiError with status_code=400 (not in retry codes) should not retry."""
+        from aidefense.exceptions import ApiError as SDKApiError
+
+        inspector = LLMInspector(
+            api_key=API_KEY_64,
+            endpoint="http://test.example.com",
+            retry_total=3,
+            retry_backoff=0,
+            fail_open=True,
+        )
+        mock_client = MagicMock()
+        mock_client.inspect_conversation.side_effect = SDKApiError("Bad request", status_code=400)
+        with patch.object(inspector, "_get_chat_client", return_value=mock_client):
+            decision = inspector.inspect_conversation(
+                messages=[{"role": "user", "content": "test"}],
+                metadata={},
+            )
+        assert decision.action == "allow"
+        assert mock_client.inspect_conversation.call_count == 1
+
+
+# ===========================================================================
+# 20. ValueError Timeout Classification
+# ===========================================================================
+
+class TestValueErrorTimeoutClassification:
+    """Verify that ValueError about timeout is classified as
+    InspectionTimeoutError, not generic SecurityPolicyError (AIFW-18900)."""
+
+    def test_value_error_timeout_raises_inspection_timeout(self):
+        """ValueError mentioning 'timeout' should become InspectionTimeoutError."""
+        inspector = LLMInspector(
+            api_key=API_KEY_64,
+            endpoint="http://test.example.com",
+            timeout_ms=5000,
+            fail_open=False,
+        )
+        mock_client = MagicMock()
+        mock_client.inspect_conversation.side_effect = ValueError(
+            "Attempted to set connect timeout to 0, but the timeout cannot be set "
+            "to a value less than or equal to 0."
+        )
+        with patch.object(inspector, "_get_chat_client", return_value=mock_client):
+            with pytest.raises(InspectionTimeoutError):
+                inspector.inspect_conversation(
+                    messages=[{"role": "user", "content": "test"}],
+                    metadata={},
+                )
+
+    def test_non_timeout_value_error_raises_security_policy(self):
+        """ValueError NOT about timeout should become SecurityPolicyError."""
+        inspector = LLMInspector(
+            api_key=API_KEY_64,
+            endpoint="http://test.example.com",
+            fail_open=False,
+        )
+        mock_client = MagicMock()
+        mock_client.inspect_conversation.side_effect = ValueError("Invalid format")
+        with patch.object(inspector, "_get_chat_client", return_value=mock_client):
+            with pytest.raises(SecurityPolicyError):
+                inspector.inspect_conversation(
+                    messages=[{"role": "user", "content": "test"}],
+                    metadata={},
+                )
+
+
+# ===========================================================================
+# 21. Malformed Response Handling
+# ===========================================================================
+
+class TestMalformedResponseHandling:
+    """Verify that malformed JSON responses are handled gracefully."""
+
+    def test_malformed_response_fail_open_allows(self):
+        """Malformed JSON with fail_open=True should allow the request."""
+        inspector = LLMInspector(
+            api_key=API_KEY_64,
+            endpoint="http://test.example.com",
+            fail_open=True,
+        )
+        mock_client = MagicMock()
+        mock_client.inspect_conversation.side_effect = json.JSONDecodeError("bad json", "", 0)
+        with patch.object(inspector, "_get_chat_client", return_value=mock_client):
+            decision = inspector.inspect_conversation(
+                messages=[{"role": "user", "content": "test"}],
+                metadata={},
+            )
+        assert decision.action == "allow"
+
+    def test_malformed_response_fail_closed_raises(self):
+        """Malformed JSON with fail_open=False should raise SecurityPolicyError."""
+        inspector = LLMInspector(
+            api_key=API_KEY_64,
+            endpoint="http://test.example.com",
+            fail_open=False,
+        )
+        mock_client = MagicMock()
+        mock_client.inspect_conversation.side_effect = json.JSONDecodeError("bad json", "", 0)
+        with patch.object(inspector, "_get_chat_client", return_value=mock_client):
+            with pytest.raises(SecurityPolicyError):
+                inspector.inspect_conversation(
+                    messages=[{"role": "user", "content": "test"}],
+                    metadata={},
+                )

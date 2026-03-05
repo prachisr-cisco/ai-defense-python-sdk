@@ -31,6 +31,7 @@ import requests
 
 from ..decision import Decision
 from ..exceptions import (
+    ConfigurationError,
     SecurityPolicyError,
     InspectionTimeoutError,
     InspectionNetworkError,
@@ -90,8 +91,7 @@ class _AgentSecConfig(Config):
         logger_instance: logging.Logger = None,
         **kwargs,
     ):
-        # None lets Config use its DEFAULT_TIMEOUT
-        timeout_int = int(timeout_sec) if timeout_sec is not None else None
+        timeout_int = max(1, int(timeout_sec)) if timeout_sec is not None else None
         Config._initialize(
             self,
             region="us-west-2",
@@ -116,7 +116,7 @@ class _AgentSecAsyncConfig(AsyncConfig):
         logger_instance: logging.Logger = None,
         **kwargs,
     ):
-        timeout_int = int(timeout_sec) if timeout_sec is not None else None
+        timeout_int = max(1, int(timeout_sec)) if timeout_sec is not None else None
         AsyncConfig._initialize(
             self,
             region="us-west-2",
@@ -273,12 +273,13 @@ class LLMInspector:
         self.entity_types = entity_types or _state.get_llm_entity_types()
         self.fail_open = fail_open
         
-        # Timeout: explicit param > state; if neither set, leave None so SDK uses its default
-        if timeout_ms is not None:
+        # Timeout: explicit param > state; if neither set, leave None so SDK uses its default.
+        # A value of 0 or negative is treated as "not set" (use SDK default).
+        if timeout_ms is not None and timeout_ms > 0:
             self.timeout_ms = timeout_ms
         else:
             state_timeout = _state.get_api_llm_timeout()
-            self.timeout_ms = (state_timeout * 1000) if state_timeout is not None else None
+            self.timeout_ms = (state_timeout * 1000) if state_timeout and state_timeout > 0 else None
         
         # Retry configuration: explicit param > state > default
         # Handle deprecated retry_attempts parameter
@@ -403,6 +404,7 @@ class LLMInspector:
             True if the request should be retried
         """
         import json
+        from aidefense.exceptions import ApiError as SDKApiError
         
         # Never retry on JSON decode errors (response is malformed, not transient)
         if isinstance(error, json.JSONDecodeError):
@@ -417,11 +419,15 @@ class LLMInspector:
         if isinstance(error, (asyncio.TimeoutError, aiohttp.ClientError)):
             return True
         
-        # Retry on configured status codes
+        # Retry on configured status codes (httpx / requests native exceptions)
         if isinstance(error, httpx.HTTPStatusError):
             return error.response.status_code in self.retry_status_codes
         if isinstance(error, requests.exceptions.HTTPError) and getattr(error, "response", None):
             return getattr(error.response, "status_code", 0) in self.retry_status_codes
+        
+        # Retry on SDK ApiError with retryable status code
+        if isinstance(error, SDKApiError) and getattr(error, "status_code", None):
+            return error.status_code in self.retry_status_codes
         
         # Don't retry on other errors
         return False
@@ -489,6 +495,19 @@ class LLMInspector:
                     f"Failed to connect to inspection API: {error_msg}"
                 ) from error
             
+            # ValueError from urllib3 timeout validation (timeout <= 0) is a timeout issue
+            if isinstance(error, ValueError) and "timeout" in error_msg.lower():
+                raise InspectionTimeoutError(
+                    f"Inspection timeout configuration error: {error_msg}",
+                    timeout_ms=self.timeout_ms,
+                ) from error
+            
+            # ValueError from API key format validation is a configuration issue
+            if isinstance(error, ValueError) and "api key" in error_msg.lower():
+                raise ConfigurationError(
+                    f"Invalid API key configuration: {error_msg}"
+                ) from error
+            
             # For other errors, raise SecurityPolicyError
             decision = Decision.block(reasons=[f"API error: {error_type}: {error_msg}"])
             raise SecurityPolicyError(decision, f"AI Defense API unavailable and fail_open=False: {error_msg}") from error
@@ -530,7 +549,7 @@ class LLMInspector:
                     messages=runtime_messages,
                     metadata=runtime_metadata,
                     config=config,
-                    timeout=(int(self.timeout_ms / 1000) if self.timeout_ms is not None else None),
+                    timeout=(max(1, int(self.timeout_ms / 1000)) if self.timeout_ms is not None else None),
                 )
                 decision = _inspect_response_to_decision(resp)
                 logger.info(f"Request decision: {decision.action}")
@@ -582,7 +601,7 @@ class LLMInspector:
         runtime_metadata = _metadata_to_runtime(metadata or {})
         config = _inspection_config_from_inspector(self.default_rules, self.entity_types)
         last_error: Optional[Exception] = None
-        timeout_sec = (int(self.timeout_ms / 1000) if self.timeout_ms is not None else None)
+        timeout_sec = (max(1, int(self.timeout_ms / 1000)) if self.timeout_ms is not None else None)
         
         for attempt in range(self.retry_total):
             try:

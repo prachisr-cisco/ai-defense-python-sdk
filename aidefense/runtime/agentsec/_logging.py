@@ -139,11 +139,7 @@ def setup_logging(
         "WARNING": logging.WARNING,
         "ERROR": logging.ERROR,
     }
-    if level_str.upper() not in _valid_log_levels:
-        logger.warning(
-            "Unknown logging level '%s'. Valid levels: %s. Defaulting to WARNING.",
-            level_str, ", ".join(sorted(_valid_log_levels)),
-        )
+    unknown_level = level_str.upper() not in _valid_log_levels
     log_level = level_map.get(level_str.upper(), logging.WARNING)
     logger.setLevel(log_level)
     
@@ -185,6 +181,13 @@ def setup_logging(
     
     # Prevent propagation to root logger
     logger.propagate = False
+    
+    # Emit deferred warning after handlers are attached so it's captured by logging
+    if unknown_level:
+        logger.warning(
+            "Unknown logging level '%s'. Valid levels: %s. Defaulting to WARNING.",
+            level_str, ", ".join(sorted(_valid_log_levels)),
+        )
     
     return logger
 

@@ -377,18 +377,17 @@ class TestLogFormatValidation:
 class TestLogLevelWarning:
     """setup_logging() should warn on unknown log levels (not raise)."""
 
-    def test_unknown_level_warns(self, caplog):
+    def test_unknown_level_warns(self, capsys):
         from aidefense.runtime.agentsec._logging import setup_logging
 
-        # Remove existing handlers to allow re-setup
         import logging as _logging
         _logger = _logging.getLogger("aidefense.runtime.agentsec")
         _logger.handlers.clear()
 
-        with caplog.at_level(logging.WARNING, logger="aidefense.runtime.agentsec"):
-            setup_logging(level="VERBOSE")
+        setup_logging(level="VERBOSE")
 
-        assert any("Unknown logging level" in msg for msg in caplog.messages)
+        captured = capsys.readouterr()
+        assert "Unknown logging level" in captured.err
 
         # Cleanup
         _logger.handlers.clear()
@@ -505,3 +504,58 @@ class TestGatewayClientBackoffClamping:
             retry_backoff=1.5,
         )
         assert client.retry_backoff == 1.5
+
+
+# ===========================================================================
+# AIFW-18899: Pool config validation
+# ===========================================================================
+
+class TestPoolConfigValidation:
+    """Non-numeric pool_max_connections / pool_max_keepalive from YAML
+    should raise ConfigurationError, not bare ValueError."""
+
+    def test_pool_max_connections_non_numeric_raises(self, tmp_path):
+        from aidefense.runtime.agentsec import _state, protect
+        from aidefense.runtime.agentsec.exceptions import ConfigurationError
+
+        yaml_file = tmp_path / "agentsec.yaml"
+        yaml_file.write_text("pool_max_connections: auto\n")
+
+        _state.reset()
+        with pytest.raises(ConfigurationError, match="pool_max_connections.*auto"):
+            protect(config=str(yaml_file), patch_clients=False, auto_dotenv=False)
+        _state.reset()
+
+    def test_pool_max_keepalive_non_numeric_raises(self, tmp_path):
+        from aidefense.runtime.agentsec import _state, protect
+        from aidefense.runtime.agentsec.exceptions import ConfigurationError
+
+        yaml_file = tmp_path / "agentsec.yaml"
+        yaml_file.write_text("pool_max_keepalive: lots\n")
+
+        _state.reset()
+        with pytest.raises(ConfigurationError, match="pool_max_keepalive.*lots"):
+            protect(config=str(yaml_file), patch_clients=False, auto_dotenv=False)
+        _state.reset()
+
+    def test_pool_max_connections_zero_raises(self, tmp_path):
+        from aidefense.runtime.agentsec import _state, protect
+        from aidefense.runtime.agentsec.exceptions import ConfigurationError
+
+        yaml_file = tmp_path / "agentsec.yaml"
+        yaml_file.write_text("pool_max_connections: 0\n")
+
+        _state.reset()
+        with pytest.raises(ConfigurationError, match="pool_max_connections.*0"):
+            protect(config=str(yaml_file), patch_clients=False, auto_dotenv=False)
+        _state.reset()
+
+    def test_pool_max_connections_valid_int_accepted(self, tmp_path):
+        from aidefense.runtime.agentsec import _state, protect
+
+        yaml_file = tmp_path / "agentsec.yaml"
+        yaml_file.write_text("pool_max_connections: 10\n")
+
+        _state.reset()
+        protect(config=str(yaml_file), patch_clients=False, auto_dotenv=False)
+        _state.reset()

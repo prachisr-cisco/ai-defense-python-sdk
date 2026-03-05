@@ -185,3 +185,50 @@ class TestInspectorResetOnReprotect:
             assert inspector2 is not inspector1
 
 
+class TestApiKeyValueErrorClassification:
+    """AIFW-18905: ValueError('Invalid API key format') should raise
+    ConfigurationError, not SecurityPolicyError, when fail_open=False."""
+
+    def test_llm_handle_error_api_key_raises_configuration_error(self):
+        from aidefense.runtime.agentsec.inspectors.api_llm import LLMInspector
+        from aidefense.runtime.agentsec.exceptions import ConfigurationError
+
+        inspector = LLMInspector.__new__(LLMInspector)
+        inspector.fail_open = False
+        inspector.timeout_ms = None
+
+        with pytest.raises(ConfigurationError, match="Invalid API key"):
+            inspector._handle_error(ValueError("Invalid API key format"))
+
+    def test_llm_handle_error_api_key_fail_open_allows(self):
+        from aidefense.runtime.agentsec.inspectors.api_llm import LLMInspector
+
+        inspector = LLMInspector.__new__(LLMInspector)
+        inspector.fail_open = True
+        inspector.timeout_ms = None
+
+        decision = inspector._handle_error(ValueError("Invalid API key format"))
+        assert decision.action == "allow"
+
+    def test_mcp_handle_error_api_key_raises_configuration_error(self):
+        from aidefense.runtime.agentsec.inspectors.api_mcp import MCPInspector
+        from aidefense.runtime.agentsec.exceptions import ConfigurationError
+
+        inspector = MCPInspector.__new__(MCPInspector)
+        inspector.fail_open = False
+        inspector.timeout_ms = None
+
+        with pytest.raises(ConfigurationError, match="Invalid API key"):
+            inspector._handle_error(ValueError("Invalid API key format"), tool_name="test_tool")
+
+    def test_mcp_handle_error_api_key_fail_open_allows(self):
+        from aidefense.runtime.agentsec.inspectors.api_mcp import MCPInspector
+
+        inspector = MCPInspector.__new__(MCPInspector)
+        inspector.fail_open = True
+        inspector.timeout_ms = None
+
+        decision = inspector._handle_error(ValueError("Invalid API key format"), tool_name="test_tool")
+        assert decision.action == "allow"
+
+

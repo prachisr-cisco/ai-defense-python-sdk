@@ -135,6 +135,10 @@ class HttpInspectionClient(InspectionClient):
             ensure_base64_body(http_req)
         if http_res:
             http_res = convert(http_res)
+            if "status_code" in http_res and "statusCode" not in http_res:
+                http_res["statusCode"] = http_res.pop("status_code")
+            if "status_string" in http_res and "statusString" not in http_res:
+                http_res["statusString"] = http_res.pop("status_string")
             ensure_base64_body(http_res)
         return self._inspect(
             http_req,

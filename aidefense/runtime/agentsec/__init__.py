@@ -137,10 +137,10 @@ def _apply_patches(api_mode_llm: Optional[str], api_mode_mcp: Optional[str]) -> 
     llm_integration = _state.get_llm_integration_mode()
     mcp_integration = _state.get_mcp_integration_mode()
 
-    # Determine if LLM patching is needed
+    # Determine if LLM patching is needed (None means not configured → off)
     llm_active = (
         (llm_integration == "gateway" and _state.get_gw_llm_mode() != "off")
-        or (llm_integration == "api" and api_mode_llm != "off")
+        or (llm_integration == "api" and api_mode_llm is not None and api_mode_llm != "off")
     )
     if llm_active:
         patch_openai()
@@ -152,10 +152,10 @@ def _apply_patches(api_mode_llm: Optional[str], api_mode_mcp: Optional[str]) -> 
         patch_litellm()
         patch_azure_ai_inference()
 
-    # Determine if MCP patching is needed
+    # Determine if MCP patching is needed (None means not configured → off)
     mcp_active = (
         (mcp_integration == "gateway" and _state.get_gw_mcp_mode() != "off")
-        or (mcp_integration == "api" and api_mode_mcp != "off")
+        or (mcp_integration == "api" and api_mode_mcp is not None and api_mode_mcp != "off")
     )
     if mcp_active:
         patch_mcp()

@@ -223,15 +223,14 @@ class TestProtect:
         assert get_api_mode_llm() == "enforce"
         assert get_api_mode_mcp() == "monitor"
 
-    def test_protect_api_mode_mcp_fallback(self):
-        """Test protect() with MCP falling back to LLM API config."""
+    def test_protect_api_mode_mcp_no_llm_fallback(self):
+        """Test protect() MCP does NOT fall back to LLM API config."""
         protect(
             api_mode={
                 "llm": {
                     "endpoint": "https://api.example.com/api",
                     "api_key": "test-llm-key",
                 },
-                # MCP not specified - should fall back to LLM
             },
         )
         
@@ -239,9 +238,8 @@ class TestProtect:
             get_api_mode_mcp_endpoint,
             get_api_mode_mcp_api_key,
         )
-        # MCP should fall back to LLM values
-        assert get_api_mode_mcp_endpoint() == "https://api.example.com/api"
-        assert get_api_mode_mcp_api_key() == "test-llm-key"
+        assert get_api_mode_mcp_endpoint() is None
+        assert get_api_mode_mcp_api_key() is None
 
     def test_protect_api_mode_fail_open(self):
         """Test protect() with fail_open settings for API mode."""

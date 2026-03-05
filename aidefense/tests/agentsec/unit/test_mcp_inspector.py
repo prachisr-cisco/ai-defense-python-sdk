@@ -86,23 +86,21 @@ class TestMCPInspectorConstructor:
             assert inspector.endpoint == "https://mcp.example.com"
             inspector.close()
 
-    def test_constructor_env_var_fallback_general(self):
-        """Test constructor falls back to general env vars when MCP not set."""
+    def test_constructor_no_llm_env_var_fallback(self):
+        """Test constructor does NOT fall back to LLM env vars when MCP not set."""
         env_vars = {
             "AI_DEFENSE_API_MODE_LLM_API_KEY": "general-key",
             "AI_DEFENSE_API_MODE_LLM_ENDPOINT": "https://general.example.com",
         }
         
-        # Clear MCP-specific vars
         with patch.dict(os.environ, env_vars, clear=False):
             os.environ.pop("AI_DEFENSE_API_MODE_MCP_API_KEY", None)
             os.environ.pop("AI_DEFENSE_API_MODE_MCP_ENDPOINT", None)
             
             inspector = MCPInspector()
             
-            # Should fall back to general vars
-            assert inspector.api_key == "general-key"
-            assert inspector.endpoint == "https://general.example.com"
+            assert inspector.api_key is None
+            assert inspector.endpoint is None
             inspector.close()
 
     def test_constructor_defaults(self):

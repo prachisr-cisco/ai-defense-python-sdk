@@ -222,13 +222,13 @@ def get_api_mode_llm_api_key() -> Optional[str]:
 
 
 def get_api_mode_mcp_endpoint() -> Optional[str]:
-    """Get the MCP API endpoint (falls back to LLM endpoint if not set)."""
-    return _api_mode_mcp_endpoint or _api_mode_llm_endpoint
+    """Get the MCP API endpoint (no fallback to LLM endpoint)."""
+    return _api_mode_mcp_endpoint
 
 
 def get_api_mode_mcp_api_key() -> Optional[str]:
-    """Get the MCP API key (falls back to LLM key if not set)."""
-    return _api_mode_mcp_api_key or _api_mode_llm_api_key
+    """Get the MCP API key (no fallback to LLM key)."""
+    return _api_mode_mcp_api_key
 
 
 # Legacy aliases for API mode (used by patchers as get_llm_mode / get_mcp_mode)

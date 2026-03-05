@@ -24,14 +24,17 @@ class TestProtectIntegration:
     """Test protect() integration with patching."""
 
     def test_protect_patches_clients_when_enabled(self):
-        """Test protect() patches all clients when patch_clients=True."""
-        # Mock the patch functions to track calls
+        """Test protect() patches all clients when patch_clients=True.
+
+        Only explicitly configured modes are patched; unconfigured (None) modes
+        default to off.
+        """
         with patch("aidefense.runtime.agentsec.patchers.patch_openai") as mock_openai, \
              patch("aidefense.runtime.agentsec.patchers.patch_bedrock") as mock_bedrock, \
              patch("aidefense.runtime.agentsec.patchers.patch_vertexai") as mock_vertexai, \
              patch("aidefense.runtime.agentsec.patchers.patch_mcp") as mock_mcp:
             
-            protect(api_mode={"llm": {"mode": "enforce"}}, patch_clients=True)
+            protect(api_mode={"llm": {"mode": "enforce"}, "mcp": {"mode": "monitor"}}, patch_clients=True)
             
             mock_openai.assert_called_once()
             mock_bedrock.assert_called_once()

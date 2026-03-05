@@ -113,12 +113,15 @@ def _should_use_gateway() -> bool:
 
 
 def _should_inspect() -> bool:
-    """Check if we should inspect (applies to API mode, and not skipped)."""
+    """Check if we should inspect (applies to API mode, and not skipped).
+
+    When mode is None (not configured), inspection is off by default.
+    """
     from .._context import is_mcp_skip_active
     if is_mcp_skip_active():
         return False
     mode = _state.get_mcp_mode()
-    if mode == "off":
+    if mode is None or mode == "off":
         return False
     return True
 

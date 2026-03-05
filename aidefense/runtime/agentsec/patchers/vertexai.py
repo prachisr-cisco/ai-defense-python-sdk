@@ -80,7 +80,10 @@ def _get_inspector() -> LLMInspector:
 
 
 def _should_inspect() -> bool:
-    """Check if we should inspect (not already done, mode is not off, and not skipped)."""
+    """Check if we should inspect (not already done, mode is not off, and not skipped).
+
+    When mode is None (not configured), inspection is off by default.
+    """
     from .._context import is_llm_skip_active
     if is_llm_skip_active():
         return False
@@ -88,7 +91,8 @@ def _should_inspect() -> bool:
         if _state.get_gw_llm_mode() == "off":
             return False
     else:
-        if _state.get_llm_mode() == "off":
+        mode = _state.get_llm_mode()
+        if mode is None or mode == "off":
             return False
     ctx = get_inspection_context()
     return not ctx.done

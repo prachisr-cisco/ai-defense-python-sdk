@@ -157,9 +157,9 @@ class MCPInspector:
         
         Args:
             api_key: API key for Cisco AI Defense MCP inspection.
-                     Falls back to AI_DEFENSE_API_MODE_MCP_API_KEY, then AI_DEFENSE_API_MODE_LLM_API_KEY env vars.
+                     Falls back to AI_DEFENSE_API_MODE_MCP_API_KEY env var.
             endpoint: Base URL for the AI Defense MCP API.
-                      Falls back to AI_DEFENSE_API_MODE_MCP_ENDPOINT, then AI_DEFENSE_API_MODE_LLM_ENDPOINT env vars.
+                      Falls back to AI_DEFENSE_API_MODE_MCP_ENDPOINT env var.
             timeout_ms: Request timeout in milliseconds (if omitted, SDK config default is used)
             retry_attempts: Deprecated, use retry_total instead
             retry_total: Total number of retry attempts (default 1, no retry)
@@ -171,20 +171,18 @@ class MCPInspector:
         """
         from .. import _state
         
-        # API key: explicit > state > MCP-specific env > general env
+        # API key: explicit > state > MCP-specific env (no LLM fallback)
         self.api_key = (
             api_key 
             or _state.get_api_mode_mcp_api_key() 
-            or os.environ.get("AI_DEFENSE_API_MODE_MCP_API_KEY") 
-            or os.environ.get("AI_DEFENSE_API_MODE_LLM_API_KEY")
+            or os.environ.get("AI_DEFENSE_API_MODE_MCP_API_KEY")
         )
         
-        # Endpoint: explicit > state > MCP-specific env > general env
+        # Endpoint: explicit > state > MCP-specific env (no LLM fallback)
         raw_endpoint = (
             endpoint 
             or _state.get_api_mode_mcp_endpoint() 
-            or os.environ.get("AI_DEFENSE_API_MODE_MCP_ENDPOINT") 
-            or os.environ.get("AI_DEFENSE_API_MODE_LLM_ENDPOINT")
+            or os.environ.get("AI_DEFENSE_API_MODE_MCP_ENDPOINT")
         )
         
         # Store base endpoint (strip any trailing /api/v1/inspect/mcp path)

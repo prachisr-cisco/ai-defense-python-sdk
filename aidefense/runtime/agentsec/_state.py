@@ -983,3 +983,7 @@ def reset() -> None:
         _api_mcp_retry_total = 2
         _api_mcp_retry_backoff = 0.5
         _api_mcp_retry_status_codes = [429, 500, 502, 503, 504]
+
+    # Clear cached inspector singletons so re-protect() creates fresh ones
+    from .patchers import reset_all_patcher_inspectors
+    reset_all_patcher_inspectors()

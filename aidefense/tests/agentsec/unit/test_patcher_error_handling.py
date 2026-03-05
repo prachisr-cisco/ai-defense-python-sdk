@@ -1,6 +1,7 @@
-"""Tests for patcher error handling (Task Group 2).
+"""Tests for patcher error handling.
 
-Tests that LLM patchers handle inspector errors gracefully and respect fail_open settings.
+Tests that LLM patchers handle inspector errors gracefully, respect fail_open
+settings, and that _state.reset() properly clears cached inspector singletons.
 """
 
 import pytest
@@ -107,7 +108,80 @@ class TestOpenAIPatcherErrorHandling:
                     assert len(chunks) == 2
 
 
+class TestInspectorResetOnReprotect:
+    """AIFW-18900: Verify _state.reset() clears cached patcher inspectors."""
 
+    def test_reset_clears_all_patcher_inspectors(self):
+        """Each patcher's _inspector should be None after reset_all_patcher_inspectors()."""
+        from aidefense.runtime.agentsec.patchers import (
+            openai, bedrock, cohere, mistral, vertexai,
+            google_genai, azure_ai_inference, litellm, mcp,
+            reset_all_patcher_inspectors,
+        )
 
+        # Seed every patcher's singleton with a sentinel object
+        sentinel = object()
+        openai._inspector = sentinel
+        bedrock._inspector = sentinel
+        cohere._inspector = sentinel
+        mistral._inspector = sentinel
+        vertexai._inspector = sentinel
+        google_genai._inspector = sentinel
+        azure_ai_inference._inspector = sentinel
+        litellm._inspector = sentinel
+        mcp._api_inspector = sentinel
+        mcp._gateway_pass_through_inspector = sentinel
+
+        reset_all_patcher_inspectors()
+
+        assert openai._inspector is None
+        assert bedrock._inspector is None
+        assert cohere._inspector is None
+        assert mistral._inspector is None
+        assert vertexai._inspector is None
+        assert google_genai._inspector is None
+        assert azure_ai_inference._inspector is None
+        assert litellm._inspector is None
+        assert mcp._api_inspector is None
+        assert mcp._gateway_pass_through_inspector is None
+
+    def test_state_reset_clears_patcher_inspectors(self):
+        """_state.reset() should call reset_all_patcher_inspectors internally."""
+        from aidefense.runtime.agentsec import _state
+        from aidefense.runtime.agentsec.patchers import openai as openai_patcher
+
+        # Seed OpenAI patcher with a sentinel
+        sentinel = object()
+        openai_patcher._inspector = sentinel
+        assert openai_patcher._inspector is sentinel
+
+        _state.reset()
+
+        assert openai_patcher._inspector is None
+
+    def test_get_inspector_picks_up_new_fail_open_after_reset(self):
+        """After reset, _get_inspector() should create a new inspector with
+        the current _state fail_open value, not the old cached one."""
+        from aidefense.runtime.agentsec import _state
+        from aidefense.runtime.agentsec.patchers import openai as openai_patcher
+        from aidefense.runtime.agentsec.inspectors import LLMInspector
+
+        # Simulate first protect() with fail_open=True
+        _state.reset()
+        with patch.object(_state, "get_api_llm_fail_open", return_value=True), \
+             patch.object(_state, "get_llm_rules", return_value=None), \
+             patch.object(_state, "is_initialized", return_value=True):
+            inspector1 = openai_patcher._get_inspector()
+            assert inspector1.fail_open is True
+
+        # Simulate re-protect() with fail_open=False
+        _state.reset()
+        assert openai_patcher._inspector is None  # reset cleared it
+        with patch.object(_state, "get_api_llm_fail_open", return_value=False), \
+             patch.object(_state, "get_llm_rules", return_value=None), \
+             patch.object(_state, "is_initialized", return_value=True):
+            inspector2 = openai_patcher._get_inspector()
+            assert inspector2.fail_open is False
+            assert inspector2 is not inspector1
 
 

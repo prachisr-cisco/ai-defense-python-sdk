@@ -38,6 +38,12 @@ _inspector: Optional[LLMInspector] = None
 _inspector_lock = threading.Lock()
 
 
+def _reset_inspector() -> None:
+    """Clear the cached inspector so the next call to _get_inspector() creates a fresh one."""
+    global _inspector
+    _inspector = None
+
+
 def _get_inspector() -> LLMInspector:
     """Get or create the LLMInspector instance (thread-safe)."""
     global _inspector

@@ -43,6 +43,13 @@ _inspector_lock = threading.Lock()
 _gateway_mode_logged: bool = False
 
 
+def _reset_inspector() -> None:
+    """Clear cached inspectors so the next access creates fresh ones."""
+    global _api_inspector, _gateway_pass_through_inspector
+    _api_inspector = None
+    _gateway_pass_through_inspector = None
+
+
 def _get_api_inspector() -> MCPInspector:
     """Get or create the MCPInspector instance for API mode (thread-safe)."""
     global _api_inspector

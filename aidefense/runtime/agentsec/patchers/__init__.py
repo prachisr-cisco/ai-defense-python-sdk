@@ -42,6 +42,26 @@ def reset_registry() -> None:
         _patch_registry = {}
 
 
+def reset_all_patcher_inspectors() -> None:
+    """Close and clear all cached inspector singletons across patcher modules.
+
+    Must be called when global state is reset (e.g. ``_state.reset()``) so that
+    the next LLM/MCP call creates a fresh inspector with the new configuration
+    (fail_open, endpoint, api_key, etc.).
+    """
+    from ..inspectors import cleanup_all_inspectors
+    cleanup_all_inspectors()
+
+    from . import (
+        openai, bedrock, cohere, mistral, vertexai,
+        google_genai, azure_ai_inference, litellm, mcp,
+    )
+    for mod in (openai, bedrock, cohere, mistral, vertexai,
+                google_genai, azure_ai_inference, litellm, mcp):
+        if hasattr(mod, "_reset_inspector"):
+            mod._reset_inspector()
+
+
 # Import patch functions for easy access
 from .openai import patch_openai
 from .bedrock import patch_bedrock
@@ -58,6 +78,7 @@ __all__ = [
     "mark_patched", 
     "get_patched_clients",
     "reset_registry",
+    "reset_all_patcher_inspectors",
     "patch_openai",
     "patch_bedrock",
     "patch_mcp",

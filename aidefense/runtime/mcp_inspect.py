@@ -470,10 +470,6 @@ class MCPInspectionClient(InspectionClient):
         Returns:
             MCPInspectResponse: The parsed MCP inspection response object.
         """
-        self.config.logger.debug(
-            f"_parse_mcp_inspect_response called | response_data: {response_data}"
-        )
-
         jsonrpc = response_data.get("jsonrpc", "2.0")
 
         # Extract ID - can be string or int

@@ -600,7 +600,6 @@ class HttpInspectionClient(InspectionClient):
             config=config,
         )
         request_dict = self._prepare_request_data(request)
-        self.config.logger.debug(f"Prepared request_dict: {request_dict}")
         # Overwrite config with a serializable version
         request_dict.update(self._prepare_inspection_config(config))
         self._validate_inspection_request(request_dict)
